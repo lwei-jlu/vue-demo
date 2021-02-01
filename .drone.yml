@@ -1,0 +1,44 @@
+pipeline:
+  build:
+    image: registry.haier.net/library/node:12.3.1-alpine
+    environment:
+      - AUTO_GENERATE=yes
+    commands:
+      - cp Dockerfile ./context_Dockerfile
+      - npm config set registry http://10.138.16.188:4873
+      - npm install
+      - npm run build
+    volumes:
+      - /data/npm/:/root/.npm
+    when:
+      event: tag
+      ref: refs/tags/v*[0-9].*[0-9].[0-9]*
+  
+
+  publish:
+    image: plugins/docker
+    registry: registry-bj.haier.net
+    repo: registry-bj.haier.net/zjzb_gitlab/live-cloud-manager
+    secrets: [ docker_username, docker_password ]
+    dockerfile: ./context_Dockerfile
+    context: .
+    tags:
+      - ${DRONE_TAG}
+    force_tag: true
+    when:
+      event: tag
+      ref: refs/tags/v*[0-9].*[0-9].[0-9]*
+
+
+  notify:
+    name: notify
+    image: registry-bj.haier.net/library/drone-notify:prod
+    project: zjzb
+    pipelinegit: https://git.haier.net/live-cloud/live-cloud-manager.git
+    receiver: live-cloud-manager
+    when:
+      status: [success, failure]
+      event: tag
+      ref: refs/tags/v*[0-9].*[0-9].[0-9]*
+
+
